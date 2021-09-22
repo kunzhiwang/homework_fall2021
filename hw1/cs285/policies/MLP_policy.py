@@ -82,6 +82,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
         #OKTODO
         observation_tensor = torch.tensor(observation, dtype=torch.float).to(ptu.device)
         action_distribution = self.forward(observation_tensor)
+        from typing import Any, cast
         return cast(
             np.ndarray,
             action_distribution.sample().cpu().detach().numpy(),
@@ -121,11 +122,11 @@ class MLPPolicySL(MLPPolicy):
     ):
         ## OKTODO
         self.optimizer.zero_grad()
-        obs_ = torch.Tensor(observations,device = ptu.device,type=torch.float)
-        act_ = torch.Tensor(actions,device = ptu.device,
-                            dtype=torch.int if self.discrete else torch.float)
+        # import ipdb;ipdb.set_trace()
+        obs_ = torch.Tensor(observations,device = ptu.device)
+        act_ = torch.Tensor(actions,device = ptu.device)#,dtype=torch.int if self.discrete else torch.float)
         policy_act = self.forward(obs_)
-        loss = -policy_act.log_prob(actions).mean()
+        loss = -policy_act.log_prob(act_).mean()
         loss.backward()
         self.optimizer.step()
         return {

@@ -162,7 +162,10 @@ class RL_Trainer(object):
 
                 # (2) collect `self.params['batch_size']` transitions
         if itr == 0:
-            return loaded_paths, 0, None
+          import pickle
+          with open(load_initial_expertdata, 'rb') as paths_file:
+              loaded_paths = pickle.load(paths_file)
+          paths, envsteps_this_batch = loaded_paths, 0
         else:
             pass
 
