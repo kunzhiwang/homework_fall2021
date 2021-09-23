@@ -123,8 +123,8 @@ class MLPPolicySL(MLPPolicy):
         ## OKTODO
         self.optimizer.zero_grad()
         # import ipdb;ipdb.set_trace()
-        obs_ = torch.Tensor(observations,device = ptu.device)
-        act_ = torch.Tensor(actions,device = ptu.device)#,dtype=torch.int if self.discrete else torch.float)
+        obs_ = torch.Tensor(observations).to(device = ptu.device)
+        act_ = torch.Tensor(actions).to(device = ptu.device)#,dtype=torch.int if self.discrete else torch.float)
         policy_act = self.forward(obs_)
         loss = -policy_act.log_prob(act_).mean()
         loss.backward()
