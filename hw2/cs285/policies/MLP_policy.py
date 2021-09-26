@@ -69,7 +69,7 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
                 n_layers=self.n_layers,
                 size=self.size,
             )
-            self.baseline.to(device)
+            self.baseline.to(ptu.device)
             self.baseline_optimizer = optim.Adam(
                 self.baseline.parameters(),
                 self.learning_rate,
@@ -86,11 +86,34 @@ class MLPPolicy(BasePolicy, nn.Module, metaclass=abc.ABCMeta):
 
     # query the policy with observation(s) to get selected action(s)
     def get_action(self, obs: np.ndarray) -> np.ndarray:
-        # TODO: get this from HW1
+        if len(obs.shape) > 1:
+            observation = obs
+        else:
+            observation = obs[None]
+
+        observation = ptu.from_numpy(observation)
+        action_distribution = self(observation) # inherited from nn.module of callable
+        action = action_distribution.sample()  # don't bother with rsample
+        return ptu.to_numpy(action)
 
     # update/train this policy
-    def update(self, observations, actions, **kwargs):
-        raise NotImplementedError
+    def update(
+            self, observations, actions,
+            adv_n=None, acs_labels_na=None, qvals=None
+    ):
+        observations = ptu.from_numpy(observations)
+        actions = ptu.from_numpy(actions)
+        action_distribution = self(observations)
+        predicted_actions = action_distribution.rsample()
+        loss = self.loss(predicted_actions, actions)
+
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
+
+        return {
+            'Training Loss': ptu.to_numpy(loss),
+        }
 
     # This function defines the forward pass of the network.
     # You can return anything you want, but you should be able to differentiate
@@ -137,7 +160,6 @@ class MLPPolicyPG(MLPPolicy):
         # HINT4: use self.optimizer to optimize the loss. Remember to
             # 'zero_grad' first
 
-        TODO
 
         if self.nn_baseline:
             ## TODO: update the neural network baseline using the q_values as
@@ -149,8 +171,21 @@ class MLPPolicyPG(MLPPolicy):
             ## HINT2: You will need to convert the targets into a tensor using
                 ## ptu.from_numpy before using it in the loss
 
-            TODO
+            if q_values is None:
+                print("None qvalue for baseline training")
+            q_values = ptu.from_numpy(q_values)
+            value_pred = self.baseline(observations)
+            loss = self.baseline_loss(value_pred,q_values)
+            self.baseline_optimizer.zero_grad()
+            loss.backward()
+            self.baseline_optimizer.step()
 
+        distribution = self.forward(observation=observations)
+        loss = - distribution.log_prob(actions)*(advantages)
+        loss = loss.mean()
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
         train_log = {
             'Training Loss': ptu.to_numpy(loss),
         }
